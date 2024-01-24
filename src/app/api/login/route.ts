@@ -1,26 +1,16 @@
 import { auth } from "@/lib/auth/lucia";
 import * as context from "next/headers";
-import { NextResponse, type NextRequest } from "next/server";
-import { SqliteError } from "better-sqlite3";
+import { NextResponse } from "next/server";
+import { LuciaError } from "lucia";
+import type { NextRequest } from "next/server";
 
 export const POST = async (request: NextRequest) => {
   const data = await request.json();
-  const { name, username, password } = data;
-
-  if (typeof name !== "string" || name.length < 2 || name.length > 100) {
-    return NextResponse.json(
-      {
-        error: "Invalid name",
-      },
-      {
-        status: 400,
-      }
-    );
-  }
+  const { username, password } = data;
 
   if (
     typeof username !== "string" ||
-    username.length < 3 ||
+    username.length < 1 ||
     username.length > 31
   ) {
     return NextResponse.json(
@@ -32,10 +22,9 @@ export const POST = async (request: NextRequest) => {
       }
     );
   }
-
   if (
     typeof password !== "string" ||
-    password.length < 6 ||
+    password.length < 1 ||
     password.length > 255
   ) {
     return NextResponse.json(
@@ -47,29 +36,16 @@ export const POST = async (request: NextRequest) => {
       }
     );
   }
-
   try {
-    const user = await auth.createUser({
-      key: {
-        providerId: "username", // auth method
-        providerUserId: username.toLowerCase(), // unique id when using "username" auth method
-        password, // hashed by Lucia
-      },
-      attributes: {
-        name,
-        username,
-      },
-    });
-
+    // find user by key
+    // and validate password
+    const key = await auth.useKey("username", username.toLowerCase(), password);
     const session = await auth.createSession({
-      userId: user.userId,
+      userId: key.userId,
       attributes: {},
     });
-
     const authRequest = auth.handleRequest(request.method, context);
-
     authRequest.setSession(session);
-
     return new Response(null, {
       status: 302,
       headers: {
@@ -77,22 +53,21 @@ export const POST = async (request: NextRequest) => {
       },
     });
   } catch (error) {
-    // this part depends on the database you're using
-    // check for unique constraint error in user table
     if (
-      error instanceof SqliteError &&
-      error.code === "SQLITE_CONSTRAINT_UNIQUE"
+      error instanceof LuciaError &&
+      (error.message === "AUTH_INVALID_KEY_ID" ||
+        error.message === "AUTH_INVALID_PASSWORD")
     ) {
+      // user does not exist or invalid password
       return NextResponse.json(
         {
-          error: "Username already taken",
+          error: "Incorrect username or password",
         },
         {
           status: 400,
         }
       );
     }
-
     return NextResponse.json(
       {
         error: "An unknown error occurred",

@@ -1,8 +1,8 @@
-"use client"
+"use client";
 
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod";
+import { SubmitHandler, useForm } from "react-hook-form";
+import { z } from "zod";
 
 import {
   Card,
@@ -11,8 +11,8 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
-} from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
@@ -20,30 +20,44 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form"
-import { Input } from "@/components/ui/input"
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { useRouter } from "next/navigation";
 
-type FormSchema = z.infer<typeof formSchema>
+type FormSchema = z.infer<typeof formSchema>;
 
 const formSchema = z.object({
   username: z.string().trim().min(2, {
     message: "שם המשתמש חייב להכיל יותר משני תווים.",
   }),
   password: z.string().min(6, { message: "הסיסמה חייבת להכיל לפחות 6 תווים." }),
-})
+});
 
 export default function LoginForm() {
+  const router = useRouter();
   const form = useForm<FormSchema>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       username: "",
       password: "",
     },
-  })
+  });
 
-  const onSubmit = (values: FormSchema) => {
-    console.log(values)
-  }
+  const onSubmit: SubmitHandler<FormSchema> = async (values) => {
+    const response = await fetch("/api/login", {
+      method: "POST",
+      redirect: "manual",
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(values),
+    });
+
+    if (response.status === 0) {
+      return router.refresh();
+    }
+  };
 
   return (
     <Card>
@@ -56,6 +70,7 @@ export default function LoginForm() {
       <CardContent className="space-y-2">
         <Form {...form}>
           <form
+            action="/api/login"
             id="login-form"
             onSubmit={form.handleSubmit(onSubmit)}
             className="grid grid-cols-1 gap-y-6 sm:grid-cols-2 sm:gap-x-6"
@@ -67,11 +82,7 @@ export default function LoginForm() {
                 <FormItem>
                   <FormLabel>שם משתמש</FormLabel>
                   <FormControl>
-                    <Input
-                      type="text"
-                      autoComplete="username"
-                      {...field}
-                    />
+                    <Input type="text" autoComplete="username" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -84,10 +95,7 @@ export default function LoginForm() {
                 <FormItem>
                   <FormLabel>סיסמה</FormLabel>
                   <FormControl>
-                    <Input
-                      type="password"
-                      {...field}
-                    />
+                    <Input type="password" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -97,15 +105,10 @@ export default function LoginForm() {
         </Form>
       </CardContent>
       <CardFooter>
-        <Button
-          size="lg"
-          type="submit"
-          className="w-full"
-          form="login-form"
-        >
+        <Button size="lg" type="submit" className="w-full" form="login-form">
           התחברות
         </Button>
       </CardFooter>
     </Card>
-  )
+  );
 }
