@@ -23,18 +23,18 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import type { ErrorType, MessageType } from "@/config/error-messages";
 
 type FormSchema = z.infer<typeof formSchema>;
 
 const formSchema = z
   .object({
     name: z.string().trim().min(2, {
-      message: "שמך המלא חייב להכיל יותר משתי אותיות.",
+      message: "שם מלא לא תקין.",
     }),
-    username: z.string().trim().min(2, {
-      message: "שם המשתמש חייב להכיל יותר משני תווים.",
+    username: z.string().trim().min(3, {
+      message: "שם המשתמש חייב להכיל יותר מ־3 תווים.",
     }),
     password: z
       .string()
@@ -73,6 +73,41 @@ export default function RegisterForm() {
 
     if (response.status === 0) {
       return router.refresh();
+    }
+
+    if (!response.ok) {
+      const result = (await response.json()) as {
+        error: ErrorType;
+        message: MessageType;
+      };
+
+      if (result.error === "INVALID_NAME") {
+        form.setError("name", {
+          type: "server",
+          message: result.message,
+        });
+      }
+
+      if (result.error === "INVALID_USERNAME") {
+        form.setError("username", {
+          type: "server",
+          message: result.message,
+        });
+      }
+
+      if (result.error === "USERNAME_ALREADY_EXISTS") {
+        form.setError("username", {
+          type: "server",
+          message: result.message,
+        });
+      }
+
+      if (result.error === "INVALID_PASSWORD") {
+        form.setError("password", {
+          type: "server",
+          message: result.message,
+        });
+      }
     }
   };
 
@@ -114,7 +149,7 @@ export default function RegisterForm() {
                     <Input type="text" autoComplete="username" {...field} />
                   </FormControl>
                   <FormDescription>
-                    כינוי אשר ישמש אותך ברחבי רח&quot;ש.
+                    כינוי אשר ישמש אותך ברחבי הייבן.
                   </FormDescription>
                   <FormMessage />
                 </FormItem>

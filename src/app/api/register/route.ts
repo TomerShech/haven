@@ -1,21 +1,15 @@
+import { createError } from "@/config/error-messages";
 import { auth } from "@/lib/auth/lucia";
+import { LuciaError } from "lucia";
 import * as context from "next/headers";
-import { NextResponse, type NextRequest } from "next/server";
-import { SqliteError } from "better-sqlite3";
+import { type NextRequest } from "next/server";
 
 export const POST = async (request: NextRequest) => {
   const data = await request.json();
   const { name, username, password } = data;
 
-  if (typeof name !== "string" || name.length < 2 || name.length > 100) {
-    return NextResponse.json(
-      {
-        error: "Invalid name",
-      },
-      {
-        status: 400,
-      }
-    );
+  if (typeof name !== "string" || name.trim().indexOf(" ") === -1) {
+    return createError("INVALID_NAME", 400);
   }
 
   if (
@@ -23,14 +17,7 @@ export const POST = async (request: NextRequest) => {
     username.length < 3 ||
     username.length > 31
   ) {
-    return NextResponse.json(
-      {
-        error: "Invalid username",
-      },
-      {
-        status: 400,
-      }
-    );
+    return createError("INVALID_USERNAME", 400);
   }
 
   if (
@@ -38,14 +25,7 @@ export const POST = async (request: NextRequest) => {
     password.length < 6 ||
     password.length > 255
   ) {
-    return NextResponse.json(
-      {
-        error: "Invalid password",
-      },
-      {
-        status: 400,
-      }
-    );
+    return createError("INVALID_PASSWORD", 400);
   }
 
   try {
@@ -77,29 +57,13 @@ export const POST = async (request: NextRequest) => {
       },
     });
   } catch (error) {
-    // this part depends on the database you're using
-    // check for unique constraint error in user table
     if (
-      error instanceof SqliteError &&
-      error.code === "SQLITE_CONSTRAINT_UNIQUE"
+      error instanceof LuciaError &&
+      error.message === "AUTH_DUPLICATE_KEY_ID"
     ) {
-      return NextResponse.json(
-        {
-          error: "Username already taken",
-        },
-        {
-          status: 400,
-        }
-      );
+      return createError("USERNAME_ALREADY_EXISTS", 400);
     }
 
-    return NextResponse.json(
-      {
-        error: "An unknown error occurred",
-      },
-      {
-        status: 500,
-      }
-    );
+    return createError("UNKNOWN_ERROR", 500);
   }
 };

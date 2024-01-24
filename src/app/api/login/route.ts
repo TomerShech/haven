@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth/lucia";
 import * as context from "next/headers";
-import { NextResponse } from "next/server";
 import { LuciaError } from "lucia";
 import type { NextRequest } from "next/server";
+import { createError } from "@/config/error-messages";
 
 export const POST = async (request: NextRequest) => {
   const data = await request.json();
@@ -13,28 +13,14 @@ export const POST = async (request: NextRequest) => {
     username.length < 1 ||
     username.length > 31
   ) {
-    return NextResponse.json(
-      {
-        error: "Invalid username",
-      },
-      {
-        status: 400,
-      }
-    );
+    return createError("INVALID_USERNAME", 400);
   }
   if (
     typeof password !== "string" ||
     password.length < 1 ||
     password.length > 255
   ) {
-    return NextResponse.json(
-      {
-        error: "Invalid password",
-      },
-      {
-        status: 400,
-      }
-    );
+    return createError("INVALID_PASSWORD", 400);
   }
   try {
     // find user by key
@@ -58,23 +44,9 @@ export const POST = async (request: NextRequest) => {
       (error.message === "AUTH_INVALID_KEY_ID" ||
         error.message === "AUTH_INVALID_PASSWORD")
     ) {
-      // user does not exist or invalid password
-      return NextResponse.json(
-        {
-          error: "Incorrect username or password",
-        },
-        {
-          status: 400,
-        }
-      );
+      return createError("INCORRECT_CREDENTIALS", 400);
     }
-    return NextResponse.json(
-      {
-        error: "An unknown error occurred",
-      },
-      {
-        status: 500,
-      }
-    );
+
+    return createError("UNKNOWN_ERROR", 500);
   }
 };

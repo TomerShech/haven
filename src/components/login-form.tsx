@@ -23,12 +23,13 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { useRouter } from "next/navigation";
+import type { ErrorType, MessageType } from "@/config/error-messages";
 
-type FormSchema = z.infer<typeof formSchema>;
+type FormSchema = z.infer<typeof formSchema> & { general?: string };
 
 const formSchema = z.object({
-  username: z.string().trim().min(2, {
-    message: "שם המשתמש חייב להכיל יותר משני תווים.",
+  username: z.string().trim().min(3, {
+    message: "שם המשתמש חייב להכיל יותר מ־3 תווים.",
   }),
   password: z.string().min(6, { message: "הסיסמה חייבת להכיל לפחות 6 תווים." }),
 });
@@ -56,6 +57,20 @@ export default function LoginForm() {
 
     if (response.status === 0) {
       return router.refresh();
+    }
+
+    if (!response.ok) {
+      const result = (await response.json()) as {
+        error: ErrorType;
+        message: MessageType;
+      };
+
+      if (result.error === "INCORRECT_CREDENTIALS") {
+        form.setError("general", {
+          type: "server",
+          message: result.message,
+        });
+      }
     }
   };
 
@@ -101,6 +116,11 @@ export default function LoginForm() {
                 </FormItem>
               )}
             />
+            {form.formState.errors.general && (
+              <p className="text-sm font-medium text-destructive">
+                {form.formState.errors.general.message}
+              </p>
+            )}
           </form>
         </Form>
       </CardContent>
